@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function Home() {
   const router = useRouter();
@@ -12,7 +12,7 @@ export default function Home() {
         Desde aquí puedes gestionar tus tratamientos, medicamentos y recordatorios.
       </Text>
 
-      <View style={styles.menu}>
+      {/* <View style={styles.menu}>
         <TouchableOpacity
           style={styles.menuItem}
           onPress={() => router.push('/treatments/create')}
@@ -26,7 +26,7 @@ export default function Home() {
         >
           <Text style={styles.menuText}>Ver tratamientos</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
     </View>
   );
 }

@@ -1,167 +1,81 @@
+// app/treatments/create.tsx
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
+import { Alert, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import TopBar from '../../components/TopBar';
+import { useTreatments } from '../../context/TreatmentsContext';
+import { Treatment } from '../types/treatments';
 
 export default function CreateTreatment() {
-  const [medicamento, setMedicamento] = useState('');
-  const [dosis, setDosis] = useState('');
-  const [horarios, setHorarios] = useState<string[]>([]);
-  const [horaActual, setHoraActual] = useState(new Date());
-  const [mostrarPicker, setMostrarPicker] = useState(false);
-
-  const [fechaInicio, setFechaInicio] = useState(new Date());
-  const [fechaFin, setFechaFin] = useState(new Date());
-
+  const { addTreatment } = useTreatments();
   const router = useRouter();
-    
+  const [name, setName] = useState('');
+  const [dosage, setDosage] = useState('');
+  const [time, setTime] = useState(new Date());
+  const [showPicker, setShowPicker] = useState(Platform.OS === 'ios');
 
-  const agregarHorario = () => {
-    const horaFormateada = horaActual.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    if (!horarios.includes(horaFormateada)) {
-      setHorarios([...horarios, horaFormateada]);
-    }
-  };
-
-  const handleGuardar = () => {
-    if (!medicamento || !dosis || horarios.length === 0) {
-      Alert.alert('Error', 'Completa todos los campos requeridos.');
+  const onSubmit = async () => {
+    if (!name || !dosage) {
+      Alert.alert('Faltan datos', 'Completa nombre y dosis');
       return;
     }
+    const h = time.getHours();
+    const m = time.getMinutes();
 
-    const tratamiento = {
-      medicamento,
-      dosis,
-      horarios,
-      fechaInicio: fechaInicio.toISOString().split('T')[0],
-      fechaFin: fechaFin.toISOString().split('T')[0],
+    const input: Omit<Treatment, 'id'> = {
+      name, dosage,
+      startDate: new Date().toISOString(),
+      schedules: [{
+        id: crypto.randomUUID(), hour: h, minute: m,
+        daysOfWeek: [0, 1, 2, 3, 4, 5, 6] // diario
+      }]
     };
 
-    console.log('Tratamiento registrado:', tratamiento);
-    Alert.alert('Éxito', 'Tratamiento registrado correctamente', [
-  {
-    text: 'OK',
-    onPress: () => router.replace('/home'),
-  },
-]);
-
+    await addTreatment(input);
+    Alert.alert('Listo', 'Tratamiento creado y recordatorio programado');
+    router.back();
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Registrar tratamiento</Text>
+    <View style={styles.container}>
+      <TopBar title="Nuevo tratamiento" />
+      <Text style={styles.title}>Nuevo tratamiento</Text>
 
-      <TextInput
-        placeholder="Nombre del medicamento"
-        value={medicamento}
-        onChangeText={setMedicamento}
-        style={styles.input}
-      />
+      <Text style={styles.label}>Nombre del medicamento</Text>
+      <TextInput value={name} onChangeText={setName} placeholder="Ej: Paracetamol 500mg" style={styles.input} />
 
-      <TextInput
-        placeholder="Dosis (ej: 500mg)"
-        value={dosis}
-        onChangeText={setDosis}
-        keyboardType="numeric"
-        style={styles.input}
-      />
+      <Text style={styles.label}>Dosis</Text>
+      <TextInput value={dosage} onChangeText={setDosage} placeholder="Ej: 1 tableta" style={styles.input} />
 
-      <TouchableOpacity onPress={() => setMostrarPicker(true)} style={styles.buttonSmall}>
-        <Text style={styles.buttonText}>Agregar horario</Text>
-      </TouchableOpacity>
-
-      {mostrarPicker && (
-        <DateTimePicker
-          value={horaActual}
-          mode="time"
-          is24Hour
-          display="default"
-          onChange={(e, selectedDate) => {
-            if (selectedDate) {
-              setHoraActual(selectedDate);
-              setMostrarPicker(false);
-              agregarHorario();
-            }
-          }}
-        />
+      <Text style={styles.label}>Hora del recordatorio</Text>
+      {showPicker ? (
+        <DateTimePicker value={time} mode="time" onChange={(_, d) => d && setTime(d)} />
+      ) : (
+        <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.timeBtn}>
+          <Text>{String(time.getHours()).padStart(2, '0')}:{String(time.getMinutes()).padStart(2, '0')}</Text>
+        </TouchableOpacity>
       )}
 
-      <View style={styles.horarios}>
-        {horarios.map((hora, index) => (
-          <Text key={index} style={styles.horarioItem}>• {hora}</Text>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Fecha de inicio:</Text>
-      <DateTimePicker
-        value={fechaInicio}
-        mode="date"
-        display="default"
-        onChange={(e, date) => date && setFechaInicio(date)}
-      />
-
-      <Text style={styles.label}>Fecha de fin:</Text>
-      <DateTimePicker
-        value={fechaFin}
-        mode="date"
-        display="default"
-        onChange={(e, date) => date && setFechaFin(date)}
-      />
-
-      <TouchableOpacity onPress={handleGuardar} style={styles.button}>
-        <Text style={styles.buttonText}>Guardar tratamiento</Text>
+      <TouchableOpacity style={styles.save} onPress={onSubmit}>
+        <Text style={styles.saveText}>Guardar</Text>
       </TouchableOpacity>
-    </ScrollView>
+
+      <TouchableOpacity style={styles.cancel} onPress={() => router.back()}>
+        <Text>Cancelar</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#f2f2f2',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 12,
-  },
-  button: {
-    backgroundColor: '#007bff',
-    borderRadius: 10,
-    padding: 14,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  buttonSmall: {
-    backgroundColor: '#6c757d',
-    borderRadius: 10,
-    padding: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 16,
-  },
-  horarios: {
-    marginBottom: 12,
-  },
-  horarioItem: {
-    fontSize: 14,
-    color: '#333',
-    marginVertical: 2,
-  },
+  container: { flex: 1, padding: 16, gap: 10 },
+  content: { flex: 1, padding: 16, gap: 10 },
+  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 6, backgroundColor: '#fff' },
+  label: { fontWeight: '600' },
+  input: { borderWidth: 1, borderRadius: 8, padding: 10 },
+  timeBtn: { borderWidth: 1, borderRadius: 8, padding: 12, alignItems: 'center', width: 120 },
+  save: { backgroundColor: '#f2cb2b', padding: 12, borderRadius: 8, alignItems: 'center', marginTop: 12 },
+  saveText: { fontWeight: '700' },
+  cancel: { alignItems: 'center', marginTop: 8 }
 });
